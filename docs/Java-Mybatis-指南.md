@@ -44,7 +44,22 @@ SqlSessionFactory作用域是全局的，SqlSession是线程级的，在请求�
 
 
 
+# MyBatis - 插件
 
+是干嘛的？
+
+怎么写？
+
+
+
+
+
+2中方式设置插件
+
+- config.xml中配置
+- @Configuration中配置
+
+原理 
 
 
 
