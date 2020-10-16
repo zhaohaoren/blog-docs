@@ -42,6 +42,14 @@ SqlSessionFactory作用域是全局的，SqlSession是线程级的，在请求�
 
 
 
+## JDBC
+
+
+
+
+
+
+
 
 
 # MyBatis - 插件
