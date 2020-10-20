@@ -127,15 +127,124 @@ if (x > 0) s = 1 else s = -1
 
 
 
+#### 循环
+
 ##### for 
+
+Scala的for循环格式为： `for(i <- 表达式)`：`i` 遍历表达式后面所有的值。
+
+Scala的`for`相当于Java中的`for.in`，没有`for(int i=0;i<10;i++)` 这种类似结构。
+
+**例**
+
+```scala
+//等价于 for(i in s)
+val s = "hello world"
+for (i <- s) print(i)
+//如果想要下标或者index值的话：i 就代表数组 s 的下标
+for (i <- 0 to 0 to s.length-l) { 
+  println(i)
+}
+```
+
+###### **break&continue**
+
+Scala**没有break和continue保留字来退出循环**！而是采用的其他的方式：
+
+`break`写法：
+
+```scala
+Breaks.breakable(
+  for (i <- 0 until 10) {
+    println(i)
+    if (i == 5) {
+      Breaks.break() // 使用Breaks对象中的break方法
+    }
+  }
+)
+```
+
+`continue`写法：
+
+```scala
+for (i <- 0 to 10) {
+  breakable {
+    if (i == 3 || i == 6) {
+      break // 引入包可以简写，for内部break，不执行下面继续下一次for
+    }
+    println(i)
+  }
+}
+```
+
+###### **高级用法**
+
+`for-for`写法：
+
+```scala
+for (i <- 1 to 3; j <- 1 to 3) print(f"${10 * i + j}%3d")
+//11 12 13 21 22 23 31 32 33
+```
+
+结合`yield`：
+
+循环体后加`yield`该循环体会构造出一个集合，这种写法叫做for推导式（for comprehension）
+
+```scala
+for (i <- 1 to 10) yield i % 3
+//res0: scala.collection.immutable.IndexedSeq[Int] = Vector(1, 2, 0, 1, 2, 0, 1, 2, 0, 1)
+```
+
+一些简化写法：
+
+- 循环中定义变量
+
+```scala
+for (i <- 1 to 3; from = 4 - i; j <- from to 3) print(f"${10 * i + j}%3d")
+//13 22 23 31 32 33
+// 等于下面简写
+for (i <- 1 to 3) {
+  form = 4 - i
+  for (j <- from to 3) {
+    print(f"${10 * i + j}%3d")
+  }
+}
+```
+
+- 使用生成器守卫（就是if判断）
+
+```scala
+for (i <- 1 to 3; j <- 1 to 3 if i != j) print(f"${10 * i + j}%3d")
+//12 13 21 23 31 32
+//等价于下面的简写
+for (i <- 1 to 3; j <- 1 to 3) {
+  if (i != j) {
+    print(f"${10 * i + j}%3d")
+  }
+}
+```
+
+> Scala的for循环的`for(表达式)` 的表达式可以有很强的表达力：对于一些循环中需要的条件判断，可以抽取到该表达式中书写。当然这只是简写，会增加传统写Java程序者的理解复杂度，如果只专注于逻辑这种写法的表现力就很强，从最后2个简化写法可以看出：**(表达式)里面写的都是循环相关的，{表达式}都是需要被循环的逻辑，**区分开表现力更好。
 
 ##### while
 
+while的写法就和其他的语言差不多了，但是我们日常用的最多的还是for循环。
+
+```scala
+while(表达式) { 表达式 }
+```
 
 
-#### 循环
 
-### 方法
+### 函数
+
+首先区别一下方法和函数：**方法对对象进行操作， 而函数则不是。**
+
+**定义函数：**
+
+
+
+
 
 
 
