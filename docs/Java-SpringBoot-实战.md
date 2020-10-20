@@ -172,4 +172,35 @@ Spring和SpringBoot都堆CORS提供了支持，下面说说SpringBoot是怎么�
 
 
 
-# 自定义SpringBoot-Starter【TODO】
+# 自定义SpringBoot-Starter
+
+Spring官方已经实现了很多的场景启动器（spring boot starters）。但是实际使用中，还是存在一些场景需要我们自己去定义starters。（比如现有的starters不能满足你的需求，spring官方没有你需要的starters等情况）
+
+
+
+实现步骤
+
+1. 依赖配置
+2. 配置属性Properties
+3. 自动配置类
+4. 配置配置类到META-INF/spring.factories文件中，让自动配置类自动加载（核心）
+
+
+
+项目结构规范：
+
+starter空项目引入autoconfiguration项目。
+
+但是对于写一个简单的启动器，我们可以把自动配置的代码写在starter里面。
+
+
+
+命名规范：
+
+Spring官方的 `spring-boot-starter-xxx`
+
+我们野生的 `xxx-spring-boot-starter`
+
+
+
+实操一个
