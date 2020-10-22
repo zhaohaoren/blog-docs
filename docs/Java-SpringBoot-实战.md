@@ -12,6 +12,59 @@ N种策略
 
 
 
+使用dynamic-datasource-spring-boot-starter
+
+### dynamic-datasource-spring-boot-starter源码分析
+
+作为spring boot 的启动器，首先看该starter主要帮我们自动配置了什么，查看META-INF/spring.factories文件
+
+```properties
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.baomidou.dynamic.datasource.spring.boot.autoconfigure.DynamicDataSourceAutoConfiguration
+```
+
+
+
+先创建Bean：DynamicDataSourceProvider
+
+这是一个用来创建数据源的Provider类，传入了从配置类中获取的数据源的配置信息（一个DataSourceProperty的map）里面封装了创建数据源的方法。
+
+(baomidou只提供了yml配置中获取数据源，想要从别的地方获取需要自己实现)
+
+
+
+然后创建Bean：DynamicRoutingDataSource
+
+这是苞米豆自己定义的动态数据源的DataSource，主要就是讲上面的DynamicDataSourceProvider 传到`provider`属性里面。然后就一些其他的配置
+
+
+
+
+
+**为什么MP不支持 这种分包的方式的多数据源？**
+
+因为MP的MybatisPlusAutoConfiguration 在配置SqlSession的时候，就只认一个数据源。一个数据源 一个sqlsession。没有说查出所有的数据源，然后为其进行都配置好SqlSession操作。
+
+所以我们只能在多数据源这个项目里面来配置全了，不能指望MP给我们配置。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## 集成Mybatis-plus
 
 
