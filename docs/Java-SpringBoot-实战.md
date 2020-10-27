@@ -49,6 +49,14 @@ com.baomidou.dynamic.datasource.spring.boot.autoconfigure.DynamicDataSourceAutoC
 
 
 
+https://blog.csdn.net/mooodo/article/details/83137461： sqlsession 可以不动 不同线程不断去修改该sqlsession单例的datasource！这也是一种方案
+
+苞米豆的也是 线程间切换数据源来解决的。
+
+
+
+那么我分包的方式 是不是也是可以这样呢？ 没必要使用多个数据源对象。
+
 
 
 
