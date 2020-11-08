@@ -44,6 +44,8 @@ SqlSessionFactory作用域是全局的，SqlSession是线程级的，在请求�
 
 ## JDBC
 
+- SPI
+
 
 
 
@@ -68,6 +70,16 @@ SqlSessionFactory作用域是全局的，SqlSession是线程级的，在请求�
 - @Configuration中配置
 
 原理 
+
+
+
+
+
+
+
+# JDBC
+
+# DataSource
 
 
 

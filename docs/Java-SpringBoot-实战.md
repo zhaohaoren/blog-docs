@@ -2,17 +2,36 @@
 
 
 
-## 日志配置 （企业级）
+## 日志配置 
 
 
 
 ## 配置多数据源
+
+
+
+
+
+### 主流策略
+
+目前市面上的主流策略有：
+
+1. 基于分包方式
+2. 基于ThreadLocal方式
+
+
 
 N种策略
 
 
 
 使用dynamic-datasource-spring-boot-starter
+
+
+
+
+
+
 
 ### dynamic-datasource-spring-boot-starter源码分析
 
@@ -56,6 +75,10 @@ https://blog.csdn.net/mooodo/article/details/83137461： sqlsession 可以不动
 
 
 那么我分包的方式 是不是也是可以这样呢？ 没必要使用多个数据源对象。
+
+
+
+
 
 
 
