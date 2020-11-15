@@ -150,3 +150,186 @@ Step 可以很简单，也可以定义的很复杂，取决于用户自己怎么
 
 1. 他没有很强的约束，但是会多很多批处理场景给我们做警醒和指导性意见。比如自己写一个批处理任务，很可能不会考虑到，处理结果批量插入等，使用SpringBatch，这些俗成的api会提示我们这么去做。
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 分享
+
+
+
+
+
+
+
+Spring Batch的一些特性
+
+- Transaction management（支持事务）
+- Chunk based processing（基于块的处理）
+- Declarative I/O（申明式IO） 
+  - 内置了一些输入/输出的组件支持，让我们更专注于业务逻辑的开发
+- Start/Stop/Restart
+  - 支持任务的开始，停止，重启的状态控制
+- Retry/Skip
+  - 任务重试与跳过
+- Web based administration interface (Spring Cloud Data Flow)
+  - web操作接口
+
+
+
+一些重要的概念
+
+Job  =  类
+
+JobInstance = 对象   是一个逻辑上的概念
+
+JobExecution = 具体执行任务的   每一次尝试运行一个job的时候执行， 这个执行可能成功还可能失败。每次执行都会创建一个Execution。
+
+
+
+job就是你定义的任务，jobInstance就是你定义的任务如果是每天定时的，那么每天就还会创建一个实例，JobExecution就是这个实例执行job的执行人
+
+
+
+JobParameters  用来区分不同的JobInstance，我们启动一个Job的时候传递不同的参数就可以创建不同的JobInstance
+
+
+
+
+
+Step 一个Job是多个Step构成的
+
+- tasklet
+- chunk-based 一个一个处理，然后一批写出
+  - itemReader
+  - itemProcessor（可选的）
+  - itemWriter
+
+StepExecution 和JobExecution一个概念 每次执行都会创建一个新的StepExecution
+
+
+
+ExecutionContext 执行上下文，一个kV集合，可以持久化的
+
+每个JobExection或者StepExecution都至少会有一个ExecutionContext，在Step每次提交或者Job的Step和Step切换的时候会保存持久化
+
+
+
+
+
+JobLauncher  作业启动器
+
+
+
+
+
+JobFlow
+
+一连串的step
+
+
+
+
+
+
+
+优点
+
+在最后一个成功步骤之后重新启动作业
+
+获取作业的信息：例如读取的项目数，提交计数等 .
+
+
+
+
+
+
+
+再来看虎鲸
+
+
+
+先查出期，再查出班 群 
+
+然后 又要一些关联的数据 
+
+
+
+- 能遇见的，理代码逻辑会更加的复杂，对于虎鲸这种数据处理来说
+
+
+
+# 虎鲸问题思考
+
+
+
+
+
+
+
+
+
+
+
