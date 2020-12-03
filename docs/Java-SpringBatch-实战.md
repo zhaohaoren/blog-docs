@@ -281,6 +281,26 @@ ExecutionContext 执行上下文，一个kV集合，可以持久化的
 
 JobLauncher  作业启动器
 
+启动job
+
+JobOperation
+
+封装了JObLauncher，比JobLauncher提供了更多的功能
+
+
+
+## Schedule
+
+作业调度
+
+
+
+
+
+JobParameters
+
+传入kv对作为参数给程序 可以从Execution中获取到参数
+
 
 
 
@@ -307,6 +327,68 @@ JobFlow
 
 
 
+## 并发
+
+Split
+
+并行执行多个flow 或者step
+
+执行那么没有状态的task
+
+## 决策器
+
+Flow的那些next等逻辑无法满足 流程的转向需求的时候，我们就可以使用自定义决策器
+
+
+
+## 监听器
+
+自带了很多listener，从JOb级别到Item级别都有
+
+可以使用注解、实现接口的方式，在之前和之后 写逻辑
+
+# 嵌套job
+
+子job不会自己执行，而是需要parentjob去launch
+
+
+
+spring.batch.job.names 指定启动job，让子job不会项目启动就自启动
+
+
+
+
+
+# 错误处理
+
+Spring Batch 在Job执行过程中发生异常默认会终止这个Job，重启会从上次失败的地方开始执行
+
+### retry重试机制
+
+默认终止job执行，如果想重试的话 使用faultTolerant方法
+
+### Skip 跳过机制
+
+指定跳过的异常，这个异常可以跳过的次数。超过多少次就停止个job
+
+### skip listener 
+
+记录一下跳过的时候，这些错误的item
+
+
+
+
+
+PPT 
+
+干啥的 原理 怎么用的
+
+
+
+
+
+
+
 再来看虎鲸
 
 
@@ -318,10 +400,18 @@ JobFlow
 
 
 - 能遇见的，理代码逻辑会更加的复杂，对于虎鲸这种数据处理来说
+- 和写MapReduce的感觉一样，很复杂，
+
+
+
+batch是说 因为外部原因或者是数据原因，导致任务失败的重启， 但是虎鲸项目很多都是因为逻辑的原因，就是需要重跑，batch对他没有用处
 
 
 
 # 虎鲸问题思考
+
+1. CRM端
+2. 数据端
 
 
 
