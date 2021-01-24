@@ -303,10 +303,55 @@ Spring官方的 `spring-boot-starter-xxx`
 
 
 
+## 定时任务
+
+#### 注意事项
+
+1. Spring的 `@Scheduled` 默认配置下是开了一个单独的线程去运行的，所有的`Scheduled` 任务都会在一个线程中被执行，所以当某个任务没有执行结束，其他的任务会阻塞到任务执行后才执行。如果想要这些任务互不影响需要自定义`Scheduled` 的线程池：
+
+   ```java
+       @Bean
+       public TaskScheduler taskScheduler() {
+           ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
+         	// 这里开了5个线程
+           taskScheduler.setPoolSize(5);
+           return taskScheduler;
+       }
+   ```
+   
+2. 我们可能在本地启动的时候，不希望定时任务启动，只有线上才执行。这时候需要让`@EnableScheduling`依据环境来生效。我们可以但是配置下：
+
+   ```java
+   @Configuration
+   @EnableScheduling
+   @EnableConfigurationProperties
+   @ConditionalOnProperty(prefix = "spring.scheduling", name = "enabled", havingValue = "true")
+   public class SchedulingConfig {}
+   ```
+   
+配置文件 application-XXX.yml：
+   
+   ```yml
+   spring:
+     #是否启动定时任务
+     scheduling:
+       enabled: false
+   ```
 
 
 
 
-# 并发
+
+## 并发
 
 线程池配置
+
+
+
+
+
+## 统一前缀
+
+https://blog.csdn.net/gzt19881123/article/details/104530561
+
+因为健康检查，所以不能使用serlvet那个
