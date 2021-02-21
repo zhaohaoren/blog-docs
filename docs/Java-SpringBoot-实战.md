@@ -1,90 +1,4 @@
-# SpringBoot 开发指南
-
-
-
-## 日志配置 
-
-
-
-### 主流策略
-
-目前市面上的主流策略有：
-
-1. 基于分包方式
-2. 基于ThreadLocal方式
-
-
-
-N种策略
-
-
-
-使用dynamic-datasource-spring-boot-starter
-
-
-
-
-
-
-
-### dynamic-datasource-spring-boot-starter源码分析
-
-作为spring boot 的启动器，首先看该starter主要帮我们自动配置了什么，查看META-INF/spring.factories文件
-
-```properties
-org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-com.baomidou.dynamic.datasource.spring.boot.autoconfigure.DynamicDataSourceAutoConfiguration
-```
-
-
-
-先创建Bean：DynamicDataSourceProvider
-
-这是一个用来创建数据源的Provider类，传入了从配置类中获取的数据源的配置信息（一个DataSourceProperty的map）里面封装了创建数据源的方法。
-
-(baomidou只提供了yml配置中获取数据源，想要从别的地方获取需要自己实现)
-
-
-
-然后创建Bean：DynamicRoutingDataSource
-
-这是苞米豆自己定义的动态数据源的DataSource，主要就是讲上面的DynamicDataSourceProvider 传到`provider`属性里面。然后就一些其他的配置
-
-
-
-
-
-**为什么MP不支持 这种分包的方式的多数据源？**
-
-因为MP的MybatisPlusAutoConfiguration 在配置SqlSession的时候，就只认一个数据源。一个数据源 一个sqlsession。没有说查出所有的数据源，然后为其进行都配置好SqlSession操作。
-
-所以我们只能在多数据源这个项目里面来配置全了，不能指望MP给我们配置。
-
-
-
-https://blog.csdn.net/mooodo/article/details/83137461： sqlsession 可以不动 不同线程不断去修改该sqlsession单例的datasource！这也是一种方案
-
-苞米豆的也是 线程间切换数据源来解决的。
-
-
-
-那么我分包的方式 是不是也是可以这样呢？ 没必要使用多个数据源对象。
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# SpringBoot 最佳实践
 
 
 
@@ -100,9 +14,11 @@ https://blog.csdn.net/mooodo/article/details/83137461： sqlsession 可以不动
 
 
 
+---
 
 
-## 解决跨域
+
+## 解决跨域问题
 
 在和前端联调的时候，时不时的就会冒出一个跨域问题，如下所示：
 
@@ -246,9 +162,11 @@ Spring和SpringBoot都堆CORS提供了支持，下面说说SpringBoot是怎么�
 
 
 
+----
 
 
-## 多数据源
+
+## 多数据源方案一些思考
 
 目前微服务大行其道，大部分的架构都已经转为单服务单库来最大程度的解耦数据源的业务关联性。但是依然存在少数场景会遇到需要使用多数据源的场景。再则，撇开微服务来说，单体的SpringBoot服务在我们开发中，多数据源的情况就更加普遍了。本文主要聊聊多数据源的一些方案即对应的实现。
 
@@ -319,7 +237,7 @@ Spring和SpringBoot都堆CORS提供了支持，下面说说SpringBoot是怎么�
 
 
 
-# 自定义SpringBoot-Starter
+## 自定义SpringBoot-Starter
 
 Spring官方已经实现了很多的场景启动器（spring boot starters）。但是实际使用中，还是存在一些场景需要我们自己去定义starters。（比如现有的starters不能满足你的需求，spring官方没有你需要的starters等情况）
 
@@ -359,6 +277,10 @@ Spring官方的 `spring-boot-starter-xxx`
 
 
 
+
+
+
+## 日志配置 
 
 
 
