@@ -168,7 +168,9 @@ if [ -n "$JAVA_TMP_HOME" ] ; then
 
 可以看到，一个纯粹的Java类，和Spring有关的和该类本身的所有的相关信息都几乎被保存在了BeanDefinition中。
 
+### BeanDefinitionHolder
 
+### RootBeanDefinition
 
 
 
@@ -182,7 +184,150 @@ if [ -n "$JAVA_TMP_HOME" ] ; then
 
 
 
-容器启动流程
+### 容器启动流程
+
+Spring提供了很多的容器，这里使用最常用的注解容器来说明，创建一个容器很简单：
+
+```java
+AnnotationConfigApplicationContext applicationContext =
+		new AnnotationConfigApplicationContext(MainApplication.class);
+```
+
+在分析源码之前，我们先看看这个注解容器的类图（我做了一些裁剪）：
+
+![image-20210223110931814](/Users/zhaohaoren/workspace/mycode/blog-docs/docs/Java-Spring源码/AnnotationConfigApplicationContext.png)
+
+可以看到一个容器主要分为2个枝杈：一个是容器Context，一个是BeanDefinitionRegistry。（上图`AbstractApplicationContext`和`BeanDefinitionRegistry`）。 容器Context又可以分2个枝杈：ResourceLoader和BeanFactory。这几个枝杈共同构建了我们整个Spring容器的骨架。阅读源码前最好吧这些核心类的职责作用给弄清楚，这样可以事半功倍。
+
+下面继续看源码：
+
+#### 容器构造
+
+我们通过注解的容器的构造方法来创建该容器
+
+```java
+public AnnotationConfigApplicationContext(Class<?>... componentClasses) {
+	this();
+	register(componentClasses);
+	// 开始
+	refresh();
+}
+```
+
+##### this()
+
+先看看`this()`（这部分不是面试重点，可以跳过）
+
+```java
+public AnnotationConfigApplicationContext() {
+	this.reader = new AnnotatedBeanDefinitionReader(this);
+	this.scanner = new ClassPathBeanDefinitionScanner(this);
+}
+```
+
+主要创建了reader和scanner2个对象。
+
+- reader【AnnotatedBeanDefinitionReader】
+  - ` new AnnotatedBeanDefinitionReader` 过程主要做了2件事
+    - 获取`Environment`包含系统环境变量等环境信息
+    - `AnnotationConfigUtils.registerAnnotationConfigProcessors`方法像容器中注入一些里的BeanDefinition。
+      ![image-20210223134411312](/Users/zhaohaoren/workspace/mycode/blog-docs/docs/Java-Spring源码/image-20210223134411312.png)
+    - 其对应的类为：
+      - **ConfigurationClassPostProcessor**
+      - DefaultEventListenerFactory
+      - EventListenerMethodProcessor
+      - **AutowiredAnnotationBeanPostProcessor**
+      - CommonAnnotationBeanPostProcessor
+    - 我们可以看到，添加了一些`BeanFactoryPostProcessor`，就是说该容器会默认注入这些processor。**这里就包含了AutoWired注解和Configuration类的后置处理器**。
+- scanner【ClassPathBeanDefinitionScanner】
+  - 主要就是设置ClassPath下的资源加载器，创建`ResourceLoader`等封装进scanner对象中。
+  - resourcePattern为`**/*.class`，配置资源加载器，加载的路径为这些class。用于后面的扫描bean类信息。
+
+##### register()
+
+```java
+public void register(Class<?>... componentClasses) {
+  // 传入MainApplication，就是我们对应的启动类
+	for (Class<?> componentClass : componentClasses) {
+		registerBean(componentClass);
+	}
+}
+```
+
+目的就是将启动类作为一个BeanDefinition注入到BeanDefinitionMap去，这里面启动类包装的BeanDefinition是`AnnotatedGenericBeanDefinition`。因为该类啥注解也没有，所以所有和注解相关的处理都是返回null，即`doRegisterBean`方法里面很多判断都是直接跳过了，这样定义map里面就有6个实例了。
+
+![image-20210223141516325](/Users/zhaohaoren/workspace/mycode/blog-docs/docs/Java-Spring源码/image-20210223141516325.png)
+
+好了，上面2个步骤总结下，核心就是初始化容器对象的时候，配置好资源加载器和加入了6个BeanDefinition。相当于准备好一些必备条件为了我们下一步refresh使用。
+
+##### refresh() 【重要】
+
+这是容器最重要的步骤，也是面试高频点。代码如下：
+
+```java
+@Override
+public void refresh() throws BeansException, IllegalStateException {
+   synchronized (this.startupShutdownMonitor) {
+      prepareRefresh();
+      ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
+      prepareBeanFactory(beanFactory);
+      try {
+         postProcessBeanFactory(beanFactory);
+         invokeBeanFactoryPostProcessors(beanFactory);
+         registerBeanPostProcessors(beanFactory);
+         initMessageSource();
+         initApplicationEventMulticaster();
+         onRefresh();
+         registerListeners();
+         finishBeanFactoryInitialization(beanFactory);
+         finishRefresh();
+      } catch (BeansException ex) {
+         if (logger.isWarnEnabled()) {
+            logger.warn("Exception encountered during context initialization - " +
+                  "cancelling refresh attempt: " + ex);
+         }
+         destroyBeans();
+         cancelRefresh(ex);
+         throw ex;
+      } finally {
+         resetCommonCaches();
+      }
+   }
+}
+```
+
+一步步来说明下
+
+1. prepareRefresh
+2. 创建ConfigurableListableBeanFactory
+3. prepareBeanFactory
+4. postProcessBeanFactory
+5. invokeBeanFactoryPostProcessors
+6. initMessageSource
+7. initApplicationEventMulticaster
+8. onRefresh
+9. registerListeners
+10. finishBeanFactoryInitialization
+11. finishRefresh
+12. resetCommonCaches
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+**`DefaultListableBeanFactory`** 这是很核心的一个类。
+
+
 
 创建Bean
 
