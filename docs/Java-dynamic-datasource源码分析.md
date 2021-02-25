@@ -271,6 +271,37 @@ Spring事务AOP的时候，会将事务管理器和一个Connection强制绑定�
 
 
 
+事务下为什么不能切换数据源
+
+```
+TransactionSynchronizationManager
+  private static final ThreadLocal<Map<Object, Object>> resources = new NamedThreadLocal("Transactional resources");
+  这个ThreadLocal里面存放了一个Map， Map 里面是datasource和一个connection 后面执行的操作其实都会从map中获取connection。
+  所以切换数据源也没用，他一直使用的就是一个connection。
+  
+  
+  获取方法
+    @Nullable
+    private static Object doGetResource(Object actualKey) {
+        Map<Object, Object> map = (Map)resources.get();
+        if (map == null) {
+            return null;
+        } else {
+            Object value = map.get(actualKey);
+            if (value instanceof ResourceHolder && ((ResourceHolder)value).isVoid()) {
+                map.remove(actualKey);
+                if (map.isEmpty()) {
+                    resources.remove();
+                }
+
+                value = null;
+            }
+
+            return value;
+        }
+    }
+```
+
 
 
 # dynamic-datasource 定制化

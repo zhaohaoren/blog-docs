@@ -419,7 +419,143 @@ batch是说 因为外部原因或者是数据原因，导致任务失败的重�
 
 
 
+MyBatisPagingItemReader源码分析
+
+
+
+整体流程
+
+1. read 会读出一批数据 list(Object) 然后 Object一个个的交给processor执行，再交给writer（这个时候再用chunk做批）
+2. 分页读取的Reader 有这么几点：  读了多少数量？  读了 多少数量？  
+3. 如何断点续上？ ---》  currentItemCount 的数量会记录下来 ！  除以页码 就知道应该偏移第几页。 取余单页量，就知道应该单页中处理到第几条了。
+
+
+
+```java
+@Override
+protected T doRead() throws Exception {
+    synchronized (lock) {
+        // 如果读取数据的result缓存为空，或者
+        if (results == null || current >= pageSize) {
+            if (logger.isDebugEnabled()) {
+                logger.debug("Reading page " + getPage());
+            }
+            // 读一个page
+            doReadPage();
+            // page编号+1
+            page++;
+            // 
+            if (current >= pageSize) {
+                current = 0;
+            }
+        }
+        // 当前的不断后移 每次doRead会从result的list取出一个数据，不断后移  current其实list中的偏移量。
+        int next = current++;
+        if (next < results.size()) {
+            return results.get(next);
+        } else {
+            return null;
+        }
+    }
+}
+```
+
+`doReadPage` 方法其实就是那个抽象类留给我们去实现的钩子方法。 主要作用就是读取list批量数据到 result结果集里面。
+
+
+
+我看reader  currentItemCount 就是代表分页阅读的次数啊？？？？
+
+```java
+@Override
+public T read() throws Exception, UnexpectedInputException, ParseException {
+   if (currentItemCount >= maxItemCount) {
+      return null;
+   }
+   currentItemCount++;
+   T item = doRead();
+   if(item instanceof ItemCountAware) {
+      ((ItemCountAware) item).setItemCount(currentItemCount);
+   }
+   return item;
+}
+```
 
 
 
 
+
+```java
+@Override
+protected void jumpToItem(int itemIndex) throws Exception {
+   // itemIndex是 已经读到的item数量
+   synchronized (lock) {
+      // item 除以单页数量 = 需要开是的 页编号
+      page = itemIndex / pageSize;
+      // 如果不能整除，的话，current item在一页中的便宜量
+     // 对的： 因为最后还是一条一条的处理的， 所以 某条处理可能失败。  
+      current = itemIndex % pageSize; 
+   }
+   // 这里mybatis 是个空实现
+   doJumpToPage(itemIndex);
+   if (logger.isDebugEnabled()) {
+      logger.debug("Jumping to page " + getPage() + " and index " + current);
+   }
+}
+```
+
+
+
+
+
+Open 方法就是流被打开的时候初始化的方法（我猜的）
+
+```java
+@Override
+public void open(ExecutionContext executionContext) throws ItemStreamException {
+   super.open(executionContext);
+   try {
+      // 标记一下任务状态为开始
+      doOpen();
+   }
+   catch (Exception e) {
+      throw new ItemStreamException("Failed to initialize the reader", e);
+   }
+   if (!isSaveState()) {
+      return;
+   }
+   
+   // 设置最大读取的item数量  超过这个数，就返回null，默认为Intger最大值
+   if (executionContext.containsKey(getExecutionContextKey(READ_COUNT_MAX))) {
+      maxItemCount = executionContext.getInt(getExecutionContextKey(READ_COUNT_MAX));
+   }
+   int itemCount = 0;
+   // 同上，获取当前reader已经 read的item的数量，如果有就从缓存取出来设置itemCount
+   if (executionContext.containsKey(getExecutionContextKey(READ_COUNT))) {
+      itemCount = executionContext.getInt(getExecutionContextKey(READ_COUNT));
+   }
+   else if(currentItemCount > 0) {
+      // 如果缓存没有（缓存可能来自于重启），就使用当前的 currentItemCount，表明从来没有放入过数据库？还没有放入缓存？ 一直在内存中操作的
+      itemCount = currentItemCount;
+   }
+   // 如果 已经读取的数据量> 0 并且， 小于最大的数量 表示要断点续上
+   if (itemCount > 0 && itemCount < maxItemCount) {
+      try {
+         // 十分重要的一个方法：   断点续上 主要的逻辑就在这里面了
+         jumpToItem(itemCount);
+      }
+      catch (Exception e) {
+         throw new ItemStreamException("Could not move to stored position on restart", e);
+      }
+   }
+   // 到此其实 就是重新设置了下 page 的页码开始位置  和 current 在一页中的偏移量
+  // currentItemCount就是代表已经读取的itemCOunt 让这2个相等。 毕竟currentItemCount 这个才是 read过程中 一直被用的 itemCount 只是临时的
+   currentItemCount = itemCount;
+}
+```
+
+
+
+
+
+![image-20210225181628651](/Users/zhaohaoren/workspace/mycode/blog-docs/docs/Java-SpringBatch-实战/image-20210225181628651.png)
