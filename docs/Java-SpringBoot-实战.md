@@ -211,17 +211,116 @@ Spring和SpringBoot都堆CORS提供了支持，下面说说SpringBoot是怎么�
 
 针对AOP方式，我觉得唯一让我必须使用的理由就是：项目依赖的多个库，里面的表结构大致相同，或者完全就是主从关系（这是分包方式最大的缺点）。这时候，对于这种库，分多个包，可能造成有大量的sql都是重复的。代码冗余就很高。 使用AOP切换就很方便。***（举个例子，一个出租车公司，依据城市进行分库，具体使用的数据源是城市的id来区分的，每个城市都有一个库，那么如果分包方式，我们对每个城市都要分1个包？然后每个包里面的代码逻辑还都一样？这显然不可取的，这种场景通过AOP可以特别优雅的解决）***。
 
+还有可能在集成某些框架时候，我们不得不去使用分包方式。比如我们在使用SpringBatch的时候，SpringBatch内部会为我们强制添加事务，导致数据源切换的时候Connection其实一直事务管理器缓存住的Connection，这样AOP方式就没法行得通（至少我目前还没有发现简单的解决方案）。
+
 ### 实现
 
 #### 分包
 
+定义一个主的数据源：` @Primary` 注解。
 
+```java
+@Configuration
+@MapperScan(basePackages = MasterXXXDsConfig.MAPPER_PKG, sqlSessionFactoryRef = MasterXXXDsConfig.SOURCE_SQL_SESSION_FACTORY)
+public class MasterXXXConfig {
+
+  	//数据源DataSource Bean名称
+    public static final String SOURCE_NAME = "MasterXXXDs";
+    //该数据源的SqlSessionFactory
+    public static final String SOURCE_SQL_SESSION_FACTORY = "MasterXXXSqlSessionFactory";
+  	//该数据源的事务管理器
+    public static final String SOURCE_TX_MANAGER = "MasterXXXTransactionManager";
+    //该数据源分包对应的mapper的包全限定类名
+    public static final String MAPPER_PKG = "xx.mapper.MasterXXX";
+    //数据源mapper对应xml的路径
+    public static final String MAPPER_LOCATION = "classpath:mapper/MasterXXX/*Mapper.xml";
+
+  	// 注入DataSource
+    @Bean(SOURCE_NAME)
+    @Primary
+    @ConfigurationProperties(prefix = "spring.datasource.MasterXXX")
+    public DataSource dataSource() {
+        return DataSourceBuilder.create().build();
+    }
+
+  	// 注入SqlSessionFactory
+    @Bean(SOURCE_SQL_SESSION_FACTORY)
+    @Primary
+    public SqlSessionFactory sqlSessionFactory() throws Exception {
+      	// 如果用Mybatis-Plus，这里注意下需要用MP自己定义的 MybatisSqlSessionFactoryBean，否则sql会无法找到对应的绑定
+      	// 如果不是用MP的，就使用Mybatis自己的SqlSessionFactoryBean
+        MybatisSqlSessionFactoryBean sqlSessionFactoryBean = new MybatisSqlSessionFactoryBean();
+        GlobalConfig globalConfig = GlobalConfigUtils.defaults();
+        globalConfig.setBanner(false);
+        sqlSessionFactoryBean.setGlobalConfig(globalConfig);
+        sqlSessionFactoryBean.setDataSource(dataSource());
+      	// 指定mapper的xml路径
+        sqlSessionFactoryBean.setMapperLocations(new PathMatchingResourcePatternResolver().getResources(MAPPER_LOCATION));
+        return sqlSessionFactoryBean.getObject();
+    }
+		
+  	// 注入事务管理器
+    @Bean(SOURCE_TX_MANAGER)
+    @Primary
+    public DataSourceTransactionManager dataSourceTransactionManager() {
+        return new DataSourceTransactionManager(dataSource());
+    }
+}
+```
+
+然后其他的数据源定义和其类似，只是不需要再标注`@Primary`注解。如：
+
+```java
+@Configuration
+@MapperScan(basePackages = YYYYConfig.MAPPER_PKG, sqlSessionFactoryRef = YYYYConfig.SOURCE_SQL_SESSION_FACTORY)
+public class YYYYConfig {
+ 		//...
+    @Bean(SOURCE_NAME)
+    @ConfigurationProperties(prefix = "spring.datasource.YYYY")
+    public DataSource dataSource() {
+      //...
+    }
+
+    @Bean(SOURCE_SQL_SESSION_FACTORY)
+    public SqlSessionFactory sqlSessionFactory() throws Exception {
+      //...
+    }
+
+    @Bean(SOURCE_TX_MANAGER)
+    public DataSourceTransactionManager dataSourceTransactionManager() {
+      //...
+    }
+}
+```
+
+另外配置中也要注意：
+
+```yml
+spring:
+  datasource:
+    XXXMaster:
+      type: com.alibaba.druid.pool.DruidDataSource
+      # 这里会提示你需要配置成jdbc-url 而不是url，原因：百度
+      jdbc-url: jdbc:mysql://..........
+      username: xxxx
+      password: xxxx
+```
+
+这种方式我们可以称为**多数据源方案**，因为容器中存在多个DataSource，他们互相独立工作的。
 
 #### AOP
 
+AOP的方式大多被称为**动态数据源**。因为他们一般都是用一个自定义的DataSource，该自定义DataSource内部定义了一个Map，然后获取Connection的时候通过AOP拦截到当前需要的数据源从Map中取出对应的DataSource然后再getConnection给出连接来实现切换数据源操作的。
+
 ##### 自定义
 
+大致流程如下：
 
+1. 自定义一个DataSource，继承`AbstractDataSource`类，用来取代SpringBoot自动配置的DataSource，里面存储一个Map存放所有的DataSource对象。
+2. 我们如何去获取正确的DataSource实现方式就有很多了，可以基于DataSource
+3. 然后就是定义Aspect切面了，
+
+AOP的实现方式有很多
 
 ##### 苞米豆
 
