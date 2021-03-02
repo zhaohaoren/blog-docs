@@ -300,7 +300,7 @@ spring:
   datasource:
     XXXMaster:
       type: com.alibaba.druid.pool.DruidDataSource
-      # 这里会提示你需要配置成jdbc-url 而不是url，原因：百度
+      # 这里会提示你需要配置成jdbc-url 而不是url，原因：自行百度
       jdbc-url: jdbc:mysql://..........
       username: xxxx
       password: xxxx
@@ -320,7 +320,95 @@ AOP的方式大多被称为**动态数据源**。因为他们一般都是用一�
 2. 我们如何去获取正确的DataSource实现方式就有很多了，可以基于DataSource
 3. 然后就是定义Aspect切面了，
 
-AOP的实现方式有很多
+AOP的实现方式有很多，我这里大概给出一个基本实现的例子：（只是实例）
+
+- 自定义的动态数据源，需要配置其代替springboot自动配置的数据源
+
+  ```java
+  public class DynamicDataSource extends AbstractRoutingDataSource{
+      private Map<String, DataSource> dataSources = new HashMap<>();
+  	@Override
+  	protected Object determineCurrentLookupKey() {
+  		return DynamicDataSourceDsHolder.getDataSourceType();
+  	}
+      // 依据ThreadLocal里面的值拿取需要的DataSource
+      public DataSource getDataSource(){
+          return dataSources.get(determineCurrentLookupKey());
+      }
+  }
+  ```
+
+- 定义一个ThreadLocalHolder用来保存当前线程使用的是哪个数据源。
+
+  ```java
+  public class DynamicDataSourceDsHolder {
+  	private static final ThreadLocal<String> dsHolder = new ThreadLocal<String>();
+      public static void setDataSourceType(String dataSourceType) {
+  		contextHolder.set(dataSourceType);
+  	}
+  	public static String getDataSourceType() {
+  		return contextHolder.get();
+  	}
+  	public static void clearDataSourceType() {
+  		contextHolder.remove();
+  	}
+  }
+  ```
+
+  
+
+- 定义一个注解，用来标记使用方法需要进行数据源切换
+
+  ```java
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target(ElementType.METHOD)
+  @Documented
+  public @interface DS {
+  	String value();
+  }
+  ```
+
+- 定义一个切面
+
+  ```java
+  @Aspect
+  @Order(-1)
+  @Component
+  public class DynamicDataSourceAspect {
+  	private final Logger logger = LoggerFactory.getLogger(DynamicDataSourceAspect.class);
+  	@Before("execution(xxxx)")
+  	public void before(JoinPoint point) {
+  		Object target = point.getTarget();
+  		String method = point.getSignature().getName();
+  		Class<?>[] classz = target.getClass().getInterfaces();
+  		Class<?>[] parameterTypes = ((MethodSignature) point.getSignature()).getMethod().getParameterTypes();
+  		try {
+  			Method m = classz[0].getMethod(method, parameterTypes);
+  			if (m != null && m.isAnnotationPresent(TargetDataSource.class)) {
+  				TargetDataSource data = m.getAnnotation(TargetDataSource.class);
+  				DynamicDataSourceDsHolder.setDataSourceType(data.value());
+  			}
+  		} catch (Exception e) {
+  			e.printStackTrace();
+  		}
+  	}
+  	@After("execution(xxxx)")
+  	public void after(JoinPoint point) {
+  		DynamicDataSourceDsHolder.clearDataSourceType();
+  	}
+  }
+  ```
+
+- 使用
+
+  ```java
+  @DS("master")
+  public void service(){
+      //xxxxx
+  }
+  ```
+
+这个简陋版本的多数据源方法，实际使用中存在很多的问题，但是大致的思路都有了，我们生产上可以使用开源的解决工具：苞米豆动态数据源方案。
 
 ##### 苞米豆
 
