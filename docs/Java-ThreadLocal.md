@@ -1,4 +1,4 @@
-# ThreadLocal 使用及原理
+# ThreadLocal 使用及原理详解
 
 这算是日常处理并发问题中，比较常见和易用一个技术点了。无论框架中还是平时业务开发中，有时候就特别适合使用ThreadLocal来解决一些问题。
 
@@ -12,7 +12,7 @@ ThreadLocal（又被称为线程本地变量）。字面意思，每个线程拥
 public class ThreadId {
     // Atomic integer containing the next thread ID to be assigned
     private static final AtomicInteger nextId = new AtomicInteger(0);
-    // 一般在一个类中都定义为private static遍历
+    // 一般在一个类中都定义为private static方便引用
     private static final ThreadLocal<Integer> threadId =
         new ThreadLocal<Integer>() {
             @Override protected Integer initialValue() {
@@ -197,11 +197,11 @@ static class ThreadLocalMap {
 }
 ```
 
-这个Map的具体方法实现细节，没有什么好说的，可以理解就是做了一个小型的HashMap。（后面部分详细操作在内存泄漏里面讲）
+这个Map的具体方法实现细节，这里就不细说了，可以理解就是做了一个小型的HashMap。（只是他们的get、set、remove操作和下面的内存泄漏有关联）
 
 #### 图解
 
- ![image-20210319235640529](D:\workspace\blog-docs\docs\Java-ThreadLocal\image-20210319235640529.png)
+ ![image-20210319235640529](/Users/zhaohaoren/workspace/mycode/blog-docs/docs/Java-ThreadLocal/image-20210319235640529.png)
 
 
 上图描述Thread和ThreadLocal之间的关系，从此就能得出很多基础结论了：
@@ -216,64 +216,124 @@ static class ThreadLocalMap {
 
 ## 内存泄漏
 
-一般来说有GC的语言不会存在内存泄漏的问题的，所有的对象释放的操作都应该是GC去做，不用我们去手动释放。但是ThreadLocal因为底层对我们的上层的一些细节屏蔽，会导致GC无法正确的回收已经不再使用的对象。
+什么是内存泄露？
+
+> 内存泄漏（Memory Leak）是指程序中已动态分配的堆内存由于某种原因程序未释放或无法释放，造成系统内存的浪费，导致程序运行速度减慢甚至系统崩溃等严重后果。【百度百科】
+
+简单来说，就是你申请的内存后面程序已经不会再使用了，但是没有被释放，一直在内存中造成占用的浪费。对于C++这类没有GC的语言来说，程序员需要手动调用析构函数去主动释放内存。但是一般来说有GC的语言不会存在内存泄漏的问题的，所有的对象释放的操作都应该是GC去做，不用我们去手动释放。但是ThreadLocal因为底层对我们的上层的一些细节屏蔽，会导致GC无法正确的回收已经不再使用的对象，下面通过一个例子示例ThreadLocal的内存泄露。
+
+### 内存泄露示例
+
+```java
+public class ThreadLocalMemoryLeakDemo {
+
+    static class LocalVariable {
+        //构建一个比较大的对象，方便监测内存
+        private Long[] value = new Long[1024 * 1024];
+    }
+
+    final static ThreadPoolExecutor EXECUTOR = ThreadUtil.newExecutor(5, 5);
+
+    final static ThreadLocal<LocalVariable> LOCAL_VAL_HOLDER = new ThreadLocal<>();
+
+    public static void main(String[] args) throws InterruptedException {
+      	//提交50个任务，每个任务都使用ThreadLocal进行set和get操作
+        for (int i = 0; i < 50; i++) {
+            EXECUTOR.execute(() -> {
+                LocalVariable localVariable = new LocalVariable();
+                localVariable.value[0] = Thread.currentThread().getId();
+                LOCAL_VAL_HOLDER.set(localVariable);
+                System.out.println(Thread.currentThread().getId() + "使用本地变量" + LOCAL_VAL_HOLDER.get().value[0]);
+                //验证每次用完remove和每次用完没有remove的区别
+                //LOCAL_VAL_HOLDER.remove();
+            });
+          	// 添加休眠时间，方便监控jvm内存波动
+            Thread.sleep(1000);
+        }
+        System.out.println("END");
+    }
+}
+```
+
+说明：
+
+这里创建一个有5个固定线程的线程池，然后向这个线程池提交50个任务，我们通过每次使用完ThreadLocal后使用`LOCAL_VAL_HOLDER.remove();`清除和不使用这2种方式来执行该程序，对比2者的运行内存来分析内存是否泄漏。
+
+- **没有调用remove方法的堆内存状态**
+
+![image-20210320193301283](/Users/zhaohaoren/workspace/mycode/blog-docs/docs/Java-ThreadLocal/image-20210320192109631.png)
+
+- **调用了remove方法的堆内存状态**
+
+![image-20210320192639838](/Users/zhaohaoren/workspace/mycode/blog-docs/docs/Java-ThreadLocal/image-20210320192639838.png)
+
+**观察可以看到，没有使用`remove`在系统GC以及我手动执行GC后，常驻的内存再25M左右。而使用了`remove`的内存在GC后则很低。这说明有一部分内存没有被GC，这就是内存发生了泄露！**
 
 ### 为什么会内存泄漏？
 
 我们上面得知Thread中存放了一个ThreadLocalMap，key是ThreadLocal对象，value是我们需要后面使用的对象（这里还是举例XX）。
 
-在一般程序中创建一个XX使用完了，GC从Root出发去发现可达，会发现XX没有被任何引用，此时就会回收XX，这是没有使用ThreadLocal下的GC过程。但是
+在正常的Java代码中，创建一个XX使用完了，GC从Root出发去发现堆内对象的可达性，会发现XX没有被任何引用，此时就会回收XX。但是使用了ThreadLocal就不太一样了。我们通过下图阐述为什么XX使用ThreadLocal后就不能被GC了（这个图为了方便理解做了一些调整，不代表真实情况，但不影响原理的理解）。
 
 
 
+![image-20210320201919034](/Users/zhaohaoren/workspace/mycode/blog-docs/docs/Java-ThreadLocal/image-20210320161207039.png)
+
+1. 这里`Thread1 Stack`相当于线程池其中一个线程Thread1的程序栈。我们可以这么理解一个Thread其实也是一个对象，处于堆中。
+2. Thread内部持有一个map【06】，这个map的生命周期等同于这个线程的生命周期，因为使用的线程池，并且没有shutdown，那么这个map其实会一直处于堆中。【05-06这条引用链和线程池生命周期一样】
+3. 此时我们创建了一个Object：XX，即上面关系线【01】。**通过ThreadLocal将XX放入到Thread的map中，就会产生2个新的引用【02-03】。**--这就是内存泄露的关键。
+4. 此时我们假设Thread1任务执行完成了，那么【01】这条链就会断裂了。一般情况下，我们就会认为XX已经没有地方引用它了，**但其实还存在着【03】这个链，而【03】这个链因为【05-06】这2个链和线程池的生命周期一致，所以他也会跟着一致存在！**
+5. 所以导致内存泄露的原因就是因为下面这条引用链：
+
+> Thread Pool > Thread Ref > Thread > ThreaLocalMap > Entry > value
+> 对应图片的：05 > 06 > 03
+
+对于Java程序员来说，因为很少关注对象的回收，所有对象使用完了都放心的全部都交给垃圾回收器来处理。我个人觉得这才是导致内存泄露的主要原因 🐶。然而ThreadLocal这一神物，却刚好钻了空子。我们程序中可能已经不再使用某个ThreadLocal进行set的对象了，但是线程中会一直持有该对象的相关引用。
+
+综上，**<u>`内存泄露的真实原因是：线程内部也会引用所创建的对象，而这层引用对我们来说是透明的！而调用remove方法会将这个引用给清除，所以如果使用得当，ThreadLocal是不会导致内存泄露的。`</u>**
 
 
 
+### 为什么用弱引用而非强引用
+
+上面有一个特别的点：【02】这条引用是虚线，因为ThreadLocalMap里面的Entry中，持有的是ThreadLocal对象的弱引用（只要GC就会被立即回收）：
+
+```java
+static class Entry extends WeakReference<ThreadLocal<?>> {
+    Object value;
+    Entry(ThreadLocal<?> k, Object v) {
+      	// k 弱引用了构造传来的Thread对象
+        super(k);
+        value = v;
+    }
+}
+```
+
+那么，为啥需要使用弱引用呢？说这点之前先明确一个立场：
+
+> 内存泄露是不规范使用ThreadLocal必然结果，和弱引用毫无关系。弱引用是对ThreadLocal内存泄露做的一定的优化。
+
+（当时囫囵吞枣我自己为了应对面试没咋仔细看，但是抓这些关键词倒是很厉害，我自己莫名其妙吧内存泄露和弱引用关联起来了 😂。）
+
+- 首先，使用强引用，不仅value无法被释放！Entry的key即使用完了也无法被释放！即new的ThreadLocal对象无法被回收。
+- 然后，**使用弱引用有下面几个好处**：
+  - 当外面ThreadLocal不需要再被使用之后，下次GC就会直接回收，可以减少ThreadLocal这部分的内存泄露。
+  - 当ThreadLocal对象被回收之后，Entry的key就是null了。然后ThreadLocal就在这方便做了优化：**在下一次ThreadLocalMap调用set()，get()，remove()方法的时候会去清除这些key为null的value的值（这个可以自己去看看ThreadLocalMap源码）。**  特别提醒一点：这个get，set，remove操作是你在外部操作其他的ThreadLocal对象触发的。
+  - 所以GC了让key变成null，是有利于下次map做操作的时候，清除无用value的。这样可以再进一步的减少内存泄露的量。
+
+**综上：使用弱引用，只是为了减少内存泄露的量！但是他还是不能解决内存泄露的问题。所以我们使用ThreadLocal的时候还是必须在用完了后调用remove方法避免内存泄露。**
 
 
 
-
-
-### 为什么用虚引用而非强引用
-
-其实就一句话：强引用一样内存泄露！
+> 重要的话多说几遍：使用ThreadLocal一定要注意一点，当我们使用完了线程本地对象后，一定要调用remove方法！！！来避免内存泄漏。
 
 
 
-
-
-
-
-一些误区
-
-- ThreadLocal的内存泄露是因为虚引用导致的。
-  - 泄露的本质原因是：我们程序中虽然不再引用了，但是在你不知道的地方（线程对象内部map），存在着引用关系。而ThreadLocal的key是虚引用，所以key可以被回收，但是value是无法被回收的。
-  - 内存泄露是ThreadLocal自身原因导致的，和虚引用还是强引用没有关系。虚引用反而是减少了内存泄露的泄露量。
-  - 如果本着GC应该帮我们做到这种垃圾回收的心态的话，那么内存泄露和虚引用也只能扯上一点点关系。（我不用了你GC就应该帮我回收了啊，）想象一下，如果想要实现这个功能，那么要么value也是用虚引用（这肯定不行的）。要么就是线程要知道你什么时候这个对象是真的不用了，然后帮你进行remove操作（这好像也没得行的样子）。
-
-
-
-
-
-对于Java程序员来说，很少关注对象的回收，所有对象使用完了都放心的全部都交给垃圾回收器来处理。我个人觉得这才是导致内存泄露的主要原因 🐶。然而ThreadLocal这一神物，却刚好钻了空子。我们程序中可能已经不再使用某个ThreadLocal对象了，但是线程中会一直持有该ThreadLocal的相关引用（虽然key会被GC成功回收）。
-
-
-
-> 综上：使用ThreadLocal一定要注意一点，当我们使用完了线程本地对象后，一定要调用remove方法！！！来避免内存泄漏。
-
-
+【参考】
 
 https://www.jianshu.com/p/d225dde8c23c
 
 https://blog.csdn.net/Y0Q2T57s/article/details/83247430
-
-
-
-疑问： 我们定义ThreadLocal对象的时候 是不是一定官方demo那样定义成static的？ 只要我们不再指向null，ThreadLocal对象就 永远都不会被回收？
-
-弱引用到底和内存泄漏 是否有关？
-
-
 
 
 
