@@ -50,6 +50,83 @@ SqlSessionFactory作用域是全局的，SqlSession是线程级的，在请求�
 
 
 
+Mybatis-config.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<!-- 配置 -->
+<configuration>
+    <!-- 属性 -->
+    <properties resource="org/mybatis/example/config.properties">
+        <property name="username" value="dev_user"/>
+        <property name="password" value="F2Fa3!33TYyg"/>
+    </properties>
+    <!-- 设置 -->
+    <settings>
+        <!--https://mybatis.org/mybatis-3/zh/configuration.html#settings-->
+        <setting name="cacheEnabled" value="true"/>
+        <setting name="mapUnderscoreToCamelCase" value="false"/>
+    </settings>
+    <!-- 类型命名 -->
+    <typeAliases>
+        <!--可以配置包/类-->
+        <typeAlias alias="Author" type="domain.blog.Author"/>
+        <package name="domain.blog"/>
+    </typeAliases>
+    <!-- 类型处理器 -->
+    <typeHandlers>
+        <!--指定具体的类-->
+        <typeHandler handler="org.mybatis.example.ExampleTypeHandler"/>
+        <!--让mybatis查询包下面的typeHandler-->
+        <package name="org.mybatis.example"/>
+    </typeHandlers>
+    <!-- 对象工厂 -->
+    <objectFactory type="org.mybatis.example.ExampleObjectFactory">
+        <property name="someProperty" value="100"/>
+    </objectFactory>
+    <!-- 插件 -->
+    <plugins>
+        <plugin interceptor="org.mybatis.example.ExamplePlugin">
+            <property name="someProperty" value="100"/>
+        </plugin>
+    </plugins>
+    <!-- 配置环境 -->
+    <environments default="development">
+        <!-- 环境变量 -->
+        <environment id="development">
+            <!-- 事务管理器 -->
+            <transactionManager type="JDBC">
+                <property name="..." value="..."/>
+            </transactionManager>
+            <!-- 数据源 -->
+            <dataSource type="POOLED">
+                <property name="driver" value="${driver}"/>
+                <property name="url" value="${url}"/>
+                <property name="username" value="${username}"/>
+                <property name="password" value="${password}"/>
+            </dataSource>
+        </environment>
+    </environments>
+
+    <!-- 数据库厂商标识 -->
+    <databaseIdProvider type="DB_VENDOR">
+        <property name="SQL Server" value="sqlserver"/>
+        <property name="DB2" value="db2"/>
+        <property name="Oracle" value="oracle"/>
+    </databaseIdProvider>
+
+    <!-- 映射器 -->
+    <mappers>
+        <mapper resource="org/mybatis/builder/AuthorMapper.xml"/>
+        <!--可以指定包-->
+        <package name="org.mybatis.builder"/>
+    </mappers>
+</configuration>
+```
+
+
+
 
 
 

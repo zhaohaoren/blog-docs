@@ -1,3 +1,23 @@
+建议顺序
+
+1. 学习mybatis的常用用法，用的差不多熟练了
+2. 去源码中寻找对应的用法的位置及原理
+3. 从源码学习中，再去思考之前使用中哪些不恰当行为，还有哪些知识盲点。
+4. 一直到至少说，mybatis整体的核心流程在你面前就像光屁股一样，mybatis算是了结了。
+5. 后面提升点就是玄学问题了：设计的初衷？设计模式？为什么这么做？为什么不那么做？
+
+
+
+
+
+
+
+
+
+
+
+
+
 大概就是JDBC不足，有了JPA和Hibernate，这些有些不足，有了Mybatis
 
 | annotations | mybatis提供的注解                           |
@@ -34,4 +54,8 @@ Cannot find class: javassist.util.proxy.ProxyFactory
   <optional>false</optional> <!-- MODIFY THIS -->
 </dependency>
 ```
+
+
+
+
 
