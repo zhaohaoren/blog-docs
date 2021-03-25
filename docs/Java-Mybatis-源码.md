@@ -44,6 +44,16 @@
 
 ## 编译mybatis
 
+
+
+
+
+
+
+
+
+
+
 Cannot find class: javassist.util.proxy.ProxyFactory
 
 ```xml
@@ -59,3 +69,72 @@ Cannot find class: javassist.util.proxy.ProxyFactory
 
 
 
+
+
+
+
+XMLConfigBuilder 来解析 config.xml 文件
+
+XMLMapperBuilder 来解析  mapper.xml文件
+
+configurationElement 方法，将所有的xml中的配置解析成MappedStatement然后放入到map中
+
+bindMapperForNamespace  通过namespace属性 反射获取到对应的mapper接口类
+
+
+
+每一个xml中配置的sql 都会被解析成一个MappedStatement对象。然后configuration.addMappedStatement(statement); 加入到config的`Map<String, MappedStatement> mappedStatements`中去
+
+
+
+MapperRegistry 的作用
+
+
+
+MappedStatement 的结构很重要
+
+
+
+
+
+配置文件解析  DONE
+
+
+
+
+
+mybatis操作的时候跟数据库的每一次连接,都需要创建一个会话,我们用openSession()方法来创建。这个会话里面需要包含一个Executor用来执行 SQL。Executor又要指定事务类型和执行器的类型。
+
+
+
+也就是 每执行一次SQL，其实都会打开一个SqlSession来进行操作。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+就不看spring的整合了，直接来看看 SpringBoot 玩了哪些蛇吧
+
+
+
+从mapper中获取的啥？ 获取的是 MapperProxy 代理，这是一个被jdk动态代理的
+
+看到MapperMethod的execute方法。
+
+
+
+在从select触发
+
+
+
+BoundSql  最重要的对象
