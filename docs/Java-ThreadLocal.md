@@ -329,6 +329,12 @@ static class Entry extends WeakReference<ThreadLocal<?>> {
 
 
 
+## JDK8之前版本
+
+
+
+
+
 【参考】
 
 https://www.jianshu.com/p/d225dde8c23c
