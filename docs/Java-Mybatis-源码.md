@@ -58,7 +58,6 @@ github下载源码：
 - **SqlSession**
   - 
 - 
-
 - **XMLConfigBuilder**
   - 负责解析`mybatis-config.xml`文件，里面封装了可以配置的节点的各种解析方法。
 - **XMLMapperBuilder**
@@ -75,6 +74,8 @@ github下载源码：
 - **BoundSql**
 - **StatementHandler**
 - **Statement**
+- **SqlNode**
+  - xml中配置的sql在解析中会被分为多个片段。每个片段对应着一种类型，如：xml配置的sql中`<if>`的内容会对应一个片段`IfSqlNode`，这些标签他们的顶级接口是
 
 
 
