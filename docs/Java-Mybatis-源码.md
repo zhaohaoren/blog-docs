@@ -75,7 +75,7 @@ github下载源码：
 - **StatementHandler**
 - **Statement**
 - **SqlNode**
-  - xml中配置的sql在解析中会被分为多个片段。每个片段对应着一种类型，如：xml配置的sql中`<if>`的内容会对应一个片段`IfSqlNode`，这些标签他们的顶级接口是
+  - xml中配置的sql在解析中会被分为多个片段。每个片段对应着一种类型，如：xml配置的sql中`<if>`的内容会对应一个片段`IfSqlNode`，这些标签他们的顶级接口类就是SqlNode
 
 
 
