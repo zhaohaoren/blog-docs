@@ -35,7 +35,7 @@ github下载源码：
       3. 最终要的就是解析这个mappers：
          1. 针对配置的每一个Mapper.xml，使用`XMLMapperBuilder`来构建，会将Mapper.xml里面所有的信息添加到configuration中
          2. 针对增删改查的没一条SQL语句：会使用`XMLStatementBuilder`来创建`MappedStatement`，封装了这条SQL从XML中获得的所有相关的信息。
-         3. 每条SQL会被解析成`MappedStatement`然后添加到`configuration`的`mappedStatements`这个map中。（这个我们debug的时候应该注意到过）
+         3. 每条SQL会被解析成`MappedStatement`然后添加到`configuration`的`mappedStatements`这个map中。（这个我们debug的时候应该注意到过），同时Sql也会被`XMLScriptBuilder`进一步解析到`sqlSource`中，`#{}`这些都会变成`?`占位符。
          4. 在Mapper.xml解析完成，并且每个SQL的`MappedStatement`都添加到`configuration`之后，会调用`bindMapperForNamespace()`方法来找Mapper.xml对应接扣进行绑定。
          5. 通过反射读取XML中`namespace`指定的Mapper全限定类名，加载这个接口然后添加到`configuration`的`MapperRegistry`中
          6. 重点看这个`MapperRegistry`，他其实内部就是一个Map:knownMappers类型为`Map<Class<?>, MapperProxyFactory<?>>`。所有的Mapper接口都会被`MapperProxyFactory`包装并放入到`knownMappers`中（key是接口的类）。所以我们使用接口，其实使用的都是被这个Proxy代理的类。
@@ -45,7 +45,9 @@ github下载源码：
 ## 使用
 
 1. 然后我们可以通过`DefaultSqlSessionFactory`对象的`openSession()`方法来开启一个`SqlSession`（默认的是`DefaultSqlSession`）。
-2. 
+2. 在
+3. 最终调用的是 `MapperMethod`的`execute()`方法
+4. 最终的最终 调用 SqlSession的selectList或者其他的一些方法，然后通过Executor来执行
 
 
 
@@ -53,28 +55,39 @@ github下载源码：
 
 ## 一些重要类的职责
 
+- **Configuration**
+  - mappedStatements：map，存放xml中sql语句，key为每个sql配置的id
+  - mapperRegistry：map，存放反射获取的Mapper接口
+  - sqlFragments：map，存放xml中\<sql>标签存放的内容
+  - resultMaps：map，存放xml中配置的resultMap信息
 - **SqlSessionFactoryBuilder**
   - 
 - **SqlSession**
   - 
 - 
-
 - **XMLConfigBuilder**
   - 负责解析`mybatis-config.xml`文件，里面封装了可以配置的节点的各种解析方法。
 - **XMLMapperBuilder**
+- **MapperProxyFactory**
+  - mapperRegistry中包装Mapper接口的类
 - **MapperProxy**
+  - 最终Mapper接口文件的代理类，代理的逻辑也在该类中
 - **DefaultSqlSession**
 - **MapperMethod**
   - 构造创建 SqlCommand 和 MethodSignature 对象
   - `execute()`核心方法
 - **SqlCommand**
-  - MapperMethod的内部类
+  - MapperMethod的内部类，决定SqlCommand类型
 - **MethodSignature**
 - **Executor**
   - 默认的类型是：CachingExecutor，但是该类又是SimpleExecutor的一个装饰类，只是添加了二级缓存的支持。
+- **SqlSource**
+  - xml解析过程中，会将每个要执行的Sql解析成SqlSource对象，然后绑定到MappedStatement中，依据Sql的特性分为DynamicSqlSource，StaticSqlSource等，比如sql中用来很多动态sql标签的配置就会使用DynamicSqlSource。
 - **BoundSql**
 - **StatementHandler**
 - **Statement**
+- **PlainMethodInvoker**
+  - 调用接口的方法为什么能够执行sql的逻辑主要在这里
 
 
 
@@ -82,13 +95,17 @@ github下载源码：
 
 
 
+![image-20210329205248161](/Users/zhaohaoren/workspace/mycode/blog-docs/docs/Java-Mybatis-源码/image-20210329205248161.png)
 
 
 
+![image-20210329205100559](/Users/zhaohaoren/workspace/mycode/blog-docs/docs/Java-Mybatis-源码/image-20210329205100559.png)
 
 
 
+Mapper接口大概流程：
 
+`session.getMapper(BlogMapper.class);` -> `mapperProxyFactory.newInstance(sqlSession);`创建`MapperProxy`代理mapper类 -> ` cachedInvoker(method).invoke(proxy, method, args, sqlSession);` -> ` new PlainMethodInvoker(new MapperMethod(mapperInterface, method, sqlSession.getConfiguration()));` ->  `MapperMethod.execute` 
 
 
 
