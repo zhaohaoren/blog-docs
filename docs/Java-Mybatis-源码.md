@@ -88,6 +88,8 @@ github下载源码：
 - **Statement**
 - **PlainMethodInvoker**
   - 调用接口的方法为什么能够执行sql的逻辑主要在这里
+- **SqlNode**
+  - xml中配置的sql在解析中会被分为多个片段。每个片段对应着一种类型，如：xml配置的sql中`<if>`的内容会对应一个片段`IfSqlNode`，这些标签他们的顶级接口类就是SqlNode
 
 
 
