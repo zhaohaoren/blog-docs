@@ -47,9 +47,24 @@ github下载源码：
 ## 使用
 
 1. 然后我们可以通过`DefaultSqlSessionFactory`对象的`openSession()`方法来开启一个`SqlSession`（默认的是`DefaultSqlSession`）。
-2. 在
-3. 最终调用的是 `MapperMethod`的`execute()`方法
-4. 最终的最终 调用 SqlSession的selectList或者其他的一些方法，然后通过Executor来执行
+2. 创建SqlSession的时候内部会创建一个Executor对象，所有的sql操作其实都是这个Executor来执行的。到这里，我们创建的SqlSession里面有2个主要的元素：`executor`和`configuration`。一个负责之前的各种配置，一个负责sql的执行。
+3. 然后我们需要获取需要使用的Mapper类，是通过SqlSession的getMapper方法来获取的。getMapper通过JDK的动态代理创建代理对象：`MapperProxy`。（configuration之前加载的`mapperRegistry`的key是类名，value是MapperProxy的工厂类，通过这个可以直接创建对应的代理对象）
+4. 此时我们调用代理类的方法的时候，就会进入`MapperProxy`的代理逻辑。这部分的逻辑也分了好几步
+   1. 首先一个Mapper接口会对应一个MapperProxy的代理对象，这个对象里面有个map `methodCache`来缓存所有的方法信息。
+   2. 当调用Mapper接口方法会执行代理invoke方法，代理逻辑会对执行的Method方法包装为`MapperMethodInvoker`对象（默认类型是`PlainMethodInvoker`）放入`methodCache`缓存中。`MapperMethodInvoker`其实内部包含了`MapperMethod`对象，这个才是真正的方法信息载体。
+   3. 也就是代理类触发接口方法的时候，会创建该方法的`MapperMethod`然后放到这个代理类的缓存中。
+   4. MapperMethod类很重要！他会将方法解析为2个属性：`SqlCommand`和`MethodSignature`。并且真正去执行sql的类就是该类的execute方法。
+   5. `SqlCommand`和`MethodSignature`的信息主要来自于接口传入的时候反射获取信息以及configuration中配置信息。
+5. 所以调用mapper接口最终调用的是 `MapperMethod`的`execute()`方法
+6. execute方法会依据sql的类型去执行对应的SqlSession的方法如`selectOne,selectList`等（要到底了）
+7. SqlSession里面封装的一些列方法的最终其实都是通过调用`executor`来执行sql的。而`executor`就比较少了，只有`query`和`update`等这些很能标记sql属性的方法。
+8. 下面主要看看executor的调用
+   1. 首先就会获取`BoundSql`对象，之前的处理中其实已经将sql信息，参数信息都解析好了（虽然我没写^_^），我们会将这些信息全部封装到`BoundSql`对象中。（所以，如果你想获取mybatis执行的sql时，可以尝试获取这个对象）
+   2. 然后对方法及参数信息创建CacheKey，用来下面的一级缓存用的key
+   3. 快到JDBC了，走的queryFromDatabase()方法，该方法会去判断缓存啊什么的，然后如果都没有就会去执行JDBC代码了
+   4. 万事具备了就可以用JDBC的方式去查数据库了，mybatis的底层入口在doQuery方法，就是创建`PreparedStatement`然后调用`execute`去查询数据库，这些都是JDBC的代码了。
+   5. 后面还有对接口使用`resultSetHandler`去解析等等步骤，将JDBC返回的ResultSet结果映射为成我们想要的Object。
+9. 分析完毕。
 
 
 
@@ -114,6 +129,12 @@ Mapper接口大概流程：
 
 
 DefaultSqlSessionFactory创建SqlSession的过程中创建Executor实例
+
+
+
+Mapper为什么是接口？
+
+因为Mybatis需要通过JDK的动态代理来创建代理类。他没有用CGLIB这些，所以需要接口。
 
 
 
